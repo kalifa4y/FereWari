@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#03045E"/>
+      <stop offset="50%" stop-color="#023E8A"/>
+      <stop offset="100%" stop-color="#0096C7"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00B4D8"/>
+      <stop offset="100%" stop-color="#90E0EF"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#03045E" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Rounded Base Background -->
+  <rect width="512" height="512" rx="128" fill="url(#oceanGrad)"/>
+  
+  <!-- Subtle Inner Ring Accent -->
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="none" stroke="url(#cyanGrad)" stroke-width="4" stroke-opacity="0.4"/>
+  
+  <!-- Central Icon / Monogram: Stylized FW -->
+  <g filter="url(#shadow)">
+    <!-- Letter F bar -->
+    <path d="M 140 140 L 240 140 C 260 140 270 150 270 170 C 270 190 260 200 240 200 L 195 200 L 195 235 L 235 235 C 255 235 265 245 265 265 C 265 285 255 295 235 295 L 195 295 L 195 372 C 195 385 185 395 168 395 C 150 395 140 385 140 372 Z" fill="#FFFFFF"/>
+    
+    <!-- Letter W intersecting / flowing -->
+    <path d="M 270 200 L 298 335 L 340 230 C 345 220 355 220 360 230 L 402 335 L 430 200 C 433 185 445 178 458 182 C 472 185 476 198 472 215 L 435 370 C 430 388 418 395 402 395 C 388 395 378 388 370 370 L 350 315 L 330 370 C 322 388 312 395 298 395 C 282 395 270 388 265 370 L 228 215 C 224 198 228 185 242 182 C 255 178 267 185 270 200 Z" fill="url(#cyanGrad)"/>
+    
+    <!-- Little Sparkling Node for Production / Value Growth -->
+    <circle cx="350" cy="145" r="22" fill="#00B4D8" />
+    <path d="M 350 115 L 350 175 M 320 145 L 380 145" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

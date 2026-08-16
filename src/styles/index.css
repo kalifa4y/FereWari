@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-navy: #03045E;
+    --brand-primary: #023E8A;
+    --brand-vibrant: #0077B6;
+    --brand-medium: #0096C7;
+    --brand-cyan: #00B4D8;
+    --brand-cyan-soft: #48CAE4;
+    --brand-subtle: #90E0EF;
+    --brand-card: #ADE8F4;
+    --brand-pale: #CAF0F8;
+    --brand-bg: #F8FCFE;
+    --brand-alert: #E63946;
+    --brand-alert-dark: #D90429;
+  }
+
+  html, body {
+    background-color: var(--brand-bg);
+    color: #1e293b;
+    font-family: "Google Sans Flex", "Product Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: "Darker Grotesque", sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glassmorphism helpers */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(144, 224, 239, 0.4);
+}
+
+/* Ocean Gradients */
+.bg-ocean-gradient {
+  background: linear-gradient(135deg, #03045E 0%, #023E8A 50%, #0077B6 100%);
+}
+
+.bg-cyan-gradient {
+  background: linear-gradient(135deg, #0077B6 0%, #00B4D8 100%);
+}
+
+.bg-card-gradient {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F0F9FD 100%);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 180, 216, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(0, 180, 216, 0.5);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite;
+}
