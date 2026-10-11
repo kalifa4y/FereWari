@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { db } from '../../db/db';
+import { hashPin } from '../../services/pinService';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { Lock, Store, Sparkles, CheckCircle2, ShieldCheck, ArrowRight } from 'lucide-react';
@@ -38,10 +39,14 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
     setIsLoading(true);
     try {
+      const { hash, salt, iterations } = await hashPin(pinCode);
+
       await db.settings.put({
         id: 'current_user_profile',
         userName: trimmedName,
-        pinCode: pinCode,
+        pinHash: hash,
+        pinSalt: salt,
+        pinIterations: iterations,
         isConfigured: true,
         trialStartDate: new Date(),
         subscriptionStatus: 'active',

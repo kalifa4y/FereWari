@@ -44,10 +44,10 @@ export const RawMaterialsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-navy leading-tight">
-            Matières Premières & Intrants
+            Ingrédients
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Enregistrez les prix d'achat unitaires et suivez vos stocks pour vos fiches recettes
+            Enregistrez vos prix d'achat pour calculer le coût de fabrication de vos produits.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export const RawMaterialsPage: React.FC = () => {
           onClick={handleOpenCreate}
           className="shadow-sm"
         >
-          Nouvelle Matière Première
+          Ajouter un ingrédient
         </Button>
       </div>
 
@@ -70,7 +70,7 @@ export const RawMaterialsPage: React.FC = () => {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher une matière..."
+            placeholder="Rechercher un ingrédient..."
             className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 bg-white focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20 font-medium"
           />
         </div>
@@ -86,7 +86,7 @@ export const RawMaterialsPage: React.FC = () => {
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
             >
-              Toutes les unités ({rawMaterials.length})
+              Tous ({rawMaterials.length})
             </button>
             {units.map(u => (
               <button
@@ -105,20 +105,41 @@ export const RawMaterialsPage: React.FC = () => {
         )}
       </div>
 
-      {/* Materials Grid */}
-      {filteredMaterials.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-brand-pale text-brand-primary flex items-center justify-center mx-auto">
-            <Layers className="w-7 h-7" />
+      {/* Materials Grid & Empty States */}
+      {rawMaterials.length === 0 ? (
+        <div className="p-10 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-brand-pale text-brand-primary flex items-center justify-center mx-auto">
+            <Layers className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-display font-black text-brand-navy">
-            Aucune matière première trouvée
+          <h3 className="text-base font-display font-black text-brand-navy">
+            Aucun ingrédient enregistré
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Ajoutez vos premiers intrants (fleurs d'hibiscus, sucre, huiles, bouteilles) pour commencer à composer vos recettes.
+          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+            Les ingrédients servent à calculer automatiquement le coût de fabrication de vos produits.
           </p>
-          <Button variant="primary" size="md" onClick={handleOpenCreate}>
-            Ajouter une matière première
+          <div className="pt-2">
+            <Button variant="primary" size="md" onClick={handleOpenCreate}>
+              Ajouter un ingrédient
+            </Button>
+          </div>
+        </div>
+      ) : filteredMaterials.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <h3 className="text-sm font-display font-black text-brand-navy">
+            Aucun ingrédient ne correspond à la recherche
+          </h3>
+          <p className="text-xs text-slate-500">
+            Vérifiez l’orthographe ou réinitialisez les filtres.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSearch('');
+              setUnitFilter('all');
+            }}
+          >
+            Effacer la recherche
           </Button>
         </div>
       ) : (

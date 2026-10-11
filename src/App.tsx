@@ -9,6 +9,7 @@ import { BottomNav } from './components/layout/BottomNav';
 import { DonationModal } from './components/subscription/DonationModal';
 import { OnboardingScreen } from './components/auth/OnboardingScreen';
 import { PinLockScreen } from './components/auth/PinLockScreen';
+import { isPinConfigured } from './services/pinService';
 
 import { ExpressSaleModal } from './components/sales/ExpressSaleModal';
 import { SaleReceiptModal } from './components/sales/SaleReceiptModal';
@@ -101,7 +102,9 @@ export const App: React.FC = () => {
   }
 
   // 1. First-time setup / Onboarding flow
-  const isProfileConfigured = Boolean(settings?.isConfigured && settings?.pinCode && settings?.userName?.trim());
+  const isProfileConfigured = Boolean(
+    settings?.isConfigured && isPinConfigured(settings) && settings?.userName?.trim()
+  );
   if (!isProfileConfigured) {
     return <OnboardingScreen onComplete={handleUnlock} />;
   }
@@ -111,7 +114,8 @@ export const App: React.FC = () => {
     return (
       <PinLockScreen
         companyName={settings.userName}
-        expectedPin={settings.pinCode || '0000'}
+        settings={settings}
+        expectedPin={settings.pinCode}
         onUnlock={handleUnlock}
       />
     );

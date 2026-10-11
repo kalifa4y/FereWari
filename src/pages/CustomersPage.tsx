@@ -34,19 +34,19 @@ export const CustomersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-navy leading-tight">
-            Classement & Fidélité Clients
+            Clients
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Identifiez vos clients les plus rentables et fidèles pour prioriser la préparation et les livraisons
+            Suivez les commandes et les montants achetés par vos clients.
           </p>
         </div>
 
-        <div className="p-3 px-4 rounded-2xl bg-brand-pale/60 border border-brand-subtle flex items-center gap-3">
+        <div className="p-3 px-4 rounded-2xl bg-brand-pale/60 border border-brand-subtle flex items-center gap-3 self-start sm:self-auto">
           <div className="p-2 rounded-xl bg-brand-primary text-white">
             <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] uppercase font-bold text-slate-500 block">Total Clients ({customers.length})</span>
+            <span className="text-[10px] uppercase font-bold text-slate-500 block">Total clients ({customers.length})</span>
             <span className="text-base font-display font-black text-brand-navy">
               {formatFCFA(totalCustomersSpend)}
             </span>

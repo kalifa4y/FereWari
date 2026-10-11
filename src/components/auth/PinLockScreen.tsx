@@ -1,51 +1,77 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Delete, ShieldAlert } from 'lucide-react';
+import { AppSettings } from '../../db/db';
+import { verifyPin, migratePinIfNeeded } from '../../services/pinService';
 
 interface PinLockScreenProps {
   companyName: string;
-  expectedPin: string;
+  expectedPin?: string;
+  settings?: AppSettings;
   onUnlock: () => void;
 }
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   companyName,
   expectedPin,
+  settings,
   onUnlock
 }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [shake, setShake] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const targetLength = expectedPin.length || 4;
+  // Target length: default to 4, or length of legacy expectedPin if present
+  const targetLength = expectedPin?.length || 4;
 
-  const handleDigit = useCallback((digit: string) => {
-    if (pin.length < targetLength) {
-      const nextPin = pin + digit;
-      setPin(nextPin);
-      setError(false);
+  const handleDigit = useCallback(async (digit: string) => {
+    if (isVerifying || pin.length >= targetLength) return;
 
-      if (nextPin.length === targetLength) {
-        // Auto-check PIN
-        if (nextPin === expectedPin) {
+    const nextPin = pin + digit;
+    setPin(nextPin);
+    setError(false);
+
+    if (nextPin.length === targetLength) {
+      setIsVerifying(true);
+      const effectiveSettings = settings || (expectedPin ? { pinCode: expectedPin } : undefined);
+
+      try {
+        const result = await verifyPin(nextPin, effectiveSettings);
+
+        if (result.valid) {
+          // Transparent migration for legacy plaintext PIN
+          if (result.needsMigration && settings) {
+            migratePinIfNeeded(nextPin, settings).catch((err) =>
+              console.error('Migration error:', err)
+            );
+          }
           setTimeout(() => {
             onUnlock();
           }, 150);
         } else {
           setTimeout(() => {
             setError(true);
-            setShake(prev => prev + 1);
+            setShake((prev) => prev + 1);
             setPin('');
+            setIsVerifying(false);
           }, 200);
         }
+      } catch (err) {
+        console.error('Error during PIN verification:', err);
+        setError(true);
+        setShake((prev) => prev + 1);
+        setPin('');
+        setIsVerifying(false);
       }
     }
-  }, [pin, targetLength, expectedPin, onUnlock]);
+  }, [pin, targetLength, expectedPin, settings, onUnlock, isVerifying]);
 
   const handleDelete = useCallback(() => {
-    setPin(prev => prev.slice(0, -1));
+    if (isVerifying) return;
+    setPin((prev) => prev.slice(0, -1));
     setError(false);
-  }, []);
+  }, [isVerifying]);
 
   // Keyboard support for desktop / physical keypad
   useEffect(() => {
@@ -137,8 +163,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
             <button
               key={num}
               type="button"
+              disabled={isVerifying}
               onClick={() => handleDigit(num.toString())}
-              className="h-14 rounded-2xl bg-slate-50 hover:bg-brand-pale active:bg-brand-vibrant active:text-white border border-slate-200 text-xl font-display font-black text-brand-navy transition-all flex items-center justify-center shadow-xs cursor-pointer"
+              className="h-14 rounded-2xl bg-slate-50 hover:bg-brand-pale active:bg-brand-vibrant active:text-white border border-slate-200 text-xl font-display font-black text-brand-navy transition-all flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50"
             >
               {num}
             </button>
@@ -150,8 +177,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           {/* Zero */}
           <button
             type="button"
+            disabled={isVerifying}
             onClick={() => handleDigit('0')}
-            className="h-14 rounded-2xl bg-slate-50 hover:bg-brand-pale active:bg-brand-vibrant active:text-white border border-slate-200 text-xl font-display font-black text-brand-navy transition-all flex items-center justify-center shadow-xs cursor-pointer"
+            className="h-14 rounded-2xl bg-slate-50 hover:bg-brand-pale active:bg-brand-vibrant active:text-white border border-slate-200 text-xl font-display font-black text-brand-navy transition-all flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50"
           >
             0
           </button>
@@ -159,8 +187,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           {/* Backspace */}
           <button
             type="button"
+            disabled={isVerifying}
             onClick={handleDelete}
-            className="h-14 rounded-2xl bg-slate-50 hover:bg-rose-50 active:bg-rose-500 active:text-white border border-slate-200 text-slate-600 hover:text-rose-600 transition-all flex items-center justify-center shadow-xs cursor-pointer"
+            className="h-14 rounded-2xl bg-slate-50 hover:bg-rose-50 active:bg-rose-500 active:text-white border border-slate-200 text-slate-600 hover:text-rose-600 transition-all flex items-center justify-center shadow-xs cursor-pointer disabled:opacity-50"
             aria-label="Effacer"
           >
             <Delete className="w-5 h-5" />

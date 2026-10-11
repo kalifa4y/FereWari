@@ -21,17 +21,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     switch (location.pathname) {
       case '/':
       case '/dashboard':
-        return 'Aperçu & Pilotage';
+        return 'Accueil';
       case '/materials':
-        return 'Matières Premières';
+        return 'Ingrédients';
       case '/recipes':
-        return 'Recettes & Coûts (CRU)';
+        return 'Produits';
       case '/sales':
-        return 'Ventes Express (POS)';
+        return 'Ventes';
       case '/customers':
-        return 'Clients & Fidélité';
+        return 'Clients';
       case '/settings':
-        return 'Sauvegarde & Paramètres';
+        return 'Paramètres';
       default:
         return 'FereWari';
     }

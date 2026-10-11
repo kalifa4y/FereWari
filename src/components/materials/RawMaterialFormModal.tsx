@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Modal } from '../common/Modal';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
-import { WizardStepper, WizardStep } from '../common/WizardStepper';
 import { RawMaterial, db } from '../../db/db';
-import { formatFCFA } from '../../services/calculationService';
-import { Save, Trash2, Tag, Coins, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Save, Trash2, Plus, ChevronDown, AlertCircle, AlertTriangle } from 'lucide-react';
 
 interface RawMaterialFormModalProps {
   isOpen: boolean;
@@ -15,126 +11,141 @@ interface RawMaterialFormModalProps {
   materialToEdit?: RawMaterial | null;
 }
 
-const COMMON_UNITS = [
-  { label: 'Kilogramme', short: 'kg', value: 'kg' },
-  { label: 'Gramme', short: 'g', value: 'g' },
-  { label: 'Litre', short: 'L', value: 'L' },
-  { label: 'Millilitre', short: 'ml', value: 'ml' },
-  { label: 'Unité (pièce)', short: 'u', value: 'unité' },
-  { label: 'Sac', short: 'sac', value: 'sac' },
-  { label: 'Paquet / Carton', short: 'pqt', value: 'paquet' },
+// Stored values must stay unchanged: recipes and existing data rely on them.
+export const MATERIAL_UNITS = [
+  { label: 'Kilogramme (kg)', value: 'kg' },
+  { label: 'Gramme (g)', value: 'g' },
+  { label: 'Litre (L)', value: 'L' },
+  { label: 'Millilitre (ml)', value: 'ml' },
+  { label: 'Unité (pièce)', value: 'unité' },
+  { label: 'Sac', value: 'sac' },
+  { label: 'Paquet / Carton', value: 'paquet' },
 ];
 
-const SUGGESTIONS = [
-  'Fleurs d\'Hibiscus séchées (Bissap)',
-  'Gingembre frais',
-  'Sucre raffiné',
-  'Beurre de Karité brut',
-  'Huile d\'Olive extra vierge',
-  'Bouteille en verre 33cl',
-  'Sachet Kraft zippé 250g'
-];
+/**
+ * Parses a user-typed amount.
+ * Returns null when the field is empty, NaN when the value is negative or not finite.
+ */
+export const parseAmount = (raw: string): number | null => {
+  if (raw.trim() === '') return null;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : NaN;
+};
+
+const selectClass =
+  'block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20';
 
 export const RawMaterialFormModal: React.FC<RawMaterialFormModalProps> = ({
   isOpen,
   onClose,
   materialToEdit
 }) => {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('kg');
-  const [unitCost, setUnitCost] = useState<number | ''>('');
-  const [stockQty, setStockQty] = useState<number | ''>('');
+  const [priceInput, setPriceInput] = useState('');
+  const [stockInput, setStockInput] = useState('');
+  const [stockTouched, setStockTouched] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [stockError, setStockError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (materialToEdit) {
       setName(materialToEdit.name);
       setUnit(materialToEdit.unit);
-      setUnitCost(materialToEdit.unitCost);
-      setStockQty(materialToEdit.stockQty);
+      setPriceInput(Number.isFinite(materialToEdit.unitCost) ? String(materialToEdit.unitCost) : '');
+      setStockInput(materialToEdit.stockQty > 0 ? String(materialToEdit.stockQty) : '');
     } else {
       setName('');
       setUnit('kg');
-      setUnitCost('');
-      setStockQty('');
+      setPriceInput('');
+      setStockInput('');
     }
-    setCurrentStepIndex(0);
-    setError(null);
+    setStockTouched(false);
+    setNameError(null);
+    setPriceError(null);
+    setStockError(null);
+    setFormError(null);
   }, [materialToEdit, isOpen]);
 
-  const steps: WizardStep[] = [
-    {
-      id: 'identification',
-      title: 'Identification & Unité',
-      shortTitle: '1. Identification',
-      description: 'Nom & Type d\'unité',
-      icon: <Tag className="w-4 h-4" />
-    },
-    {
-      id: 'pricing',
-      title: 'Tarification & Stock',
-      shortTitle: '2. Coût & Stock',
-      description: 'Prix d\'achat & Réserves',
-      icon: <Coins className="w-4 h-4" />
-    }
-  ];
+  const isEditing = Boolean(materialToEdit?.id);
+  const price = parseAmount(priceInput);
+  const stock = parseAmount(stockInput);
 
-  const validateStep1 = () => {
-    if (!name.trim()) {
-      setError('Veuillez renseigner le nom de la matière première.');
-      return false;
-    }
-    return true;
-  };
+  // Keep a legacy/imported unit selectable so it is never silently replaced.
+  const unitOptions =
+    materialToEdit && !MATERIAL_UNITS.some(u => u.value === materialToEdit.unit)
+      ? [...MATERIAL_UNITS, { label: materialToEdit.unit, value: materialToEdit.unit }]
+      : MATERIAL_UNITS;
 
-  const handleNext = () => {
-    if (validateStep1()) {
-      setError(null);
-      setCurrentStepIndex(1);
-    }
-  };
-
-  const handlePrev = () => {
-    setError(null);
-    setCurrentStepIndex(0);
-  };
+  const unitChanged = Boolean(materialToEdit && unit !== materialToEdit.unit);
+  const stockOpenByDefault = Boolean(materialToEdit && materialToEdit.stockQty > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setCurrentStepIndex(0);
-      setError('Veuillez renseigner le nom de la matière première.');
-      return;
-    }
-    if (unitCost === '' || Number(unitCost) < 0) {
-      setCurrentStepIndex(1);
-      setError('Veuillez indiquer un coût d\'achat valide (>= 0 FCFA).');
+    setFormError(null);
+
+    const nextNameError = name.trim() ? null : 'Indiquez le nom de l\'ingrédient.';
+    const nextPriceError =
+      price === null
+        ? 'Indiquez le prix d\'achat.'
+        : Number.isNaN(price)
+          ? 'Indiquez un prix valide (0 ou plus).'
+          : null;
+    const nextStockError = stock !== null && Number.isNaN(stock) ? 'Indiquez une quantité valide (0 ou plus).' : null;
+
+    setNameError(nextNameError);
+    setPriceError(nextPriceError);
+    setStockError(nextStockError);
+
+    if (nextNameError || nextPriceError || nextStockError) {
+      const firstInvalidId = nextNameError ? 'material-name' : nextPriceError ? 'material-price' : 'material-stock';
+      if (firstInvalidId === 'material-stock') {
+        const details = document.getElementById('material-stock-section') as HTMLDetailsElement | null;
+        if (details) details.open = true;
+      }
+      document.getElementById(firstInvalidId)?.focus();
       return;
     }
 
     setIsSubmitting(true);
     try {
       const now = new Date();
-      const payload: Omit<RawMaterial, 'id'> = {
-        name: name.trim(),
-        unit: unit.trim(),
-        unitCost: Number(unitCost),
-        stockQty: Number(stockQty) || 0,
-        updatedAt: now
-      };
 
       if (materialToEdit?.id) {
-        await db.rawMaterials.update(materialToEdit.id, payload);
+        const changes: Partial<RawMaterial> = {
+          name: name.trim(),
+          unit: unit.trim(),
+          unitCost: price as number,
+          updatedAt: now
+        };
+        // Only write the stock when the artisan actually entered a value:
+        // an untouched or emptied field keeps the stock stored in the database.
+        if (stockTouched && stock !== null) {
+          changes.stockQty = stock;
+        }
+        const updated = await db.rawMaterials.update(materialToEdit.id, changes);
+        if (updated === 0) {
+          setFormError('Cet ingrédient n\'existe plus. Fermez le formulaire et réessayez.');
+          return;
+        }
       } else {
+        const payload: Omit<RawMaterial, 'id'> = {
+          name: name.trim(),
+          unit: unit.trim(),
+          unitCost: price as number,
+          stockQty: stock ?? 0,
+          updatedAt: now
+        };
         await db.rawMaterials.add(payload as RawMaterial);
       }
 
       onClose();
     } catch (err) {
       console.error('Error saving raw material:', err);
-      setError('Une erreur est survenue lors de l\'enregistrement.');
+      setFormError('L\'enregistrement a échoué. Vos saisies sont conservées, réessayez.');
     } finally {
       setIsSubmitting(false);
     }
@@ -142,251 +153,161 @@ export const RawMaterialFormModal: React.FC<RawMaterialFormModalProps> = ({
 
   const handleDelete = async () => {
     if (!materialToEdit?.id) return;
-    if (window.confirm(`Êtes-vous sûr de vouloir supprimer "${materialToEdit.name}" ?`)) {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer "${materialToEdit.name}" ?`)) return;
+    try {
       await db.rawMaterials.delete(materialToEdit.id);
       onClose();
+    } catch (err) {
+      console.error('Error deleting raw material:', err);
+      setFormError('La suppression a échoué. Réessayez.');
     }
   };
-
-  // Step 1: Identification
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h4 className="text-base font-display font-black text-brand-navy">
-          Désignation de la Matière Première
-        </h4>
-        <p className="text-xs text-slate-500">
-          Identifiez l'ingrédient ou l'intrant que vous achetez auprès de vos fournisseurs.
-        </p>
-      </div>
-
-      <Input
-        label="Nom de l'intrant / ingrédient"
-        placeholder="Ex: Fleurs de Bissap, Sucre blanc, Huile de palme..."
-        value={name}
-        onChange={e => {
-          setName(e.target.value);
-          if (error) setError(null);
-        }}
-        required
-        autoFocus
-      />
-
-      {/* Quick suggestions */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-          Exemples courants :
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {SUGGESTIONS.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setName(s)}
-              className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 hover:bg-brand-pale text-slate-700 hover:text-brand-navy font-medium transition-colors border border-slate-200/60"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Unit Selector Pills */}
-      <div className="space-y-2 pt-2 border-t border-slate-100">
-        <label className="block text-xs font-bold text-brand-navy tracking-wide uppercase">
-          Unité de mesure d'achat
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {COMMON_UNITS.map(u => {
-            const isSelected = unit === u.value;
-            return (
-              <button
-                key={u.value}
-                type="button"
-                onClick={() => setUnit(u.value)}
-                className={clsx(
-                  'p-2.5 rounded-xl border text-left transition-all text-xs font-bold flex flex-col justify-between',
-                  isSelected
-                    ? 'border-brand-primary bg-brand-pale/60 text-brand-navy ring-2 ring-brand-primary/20 shadow-xs'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                )}
-              >
-                <span className="text-[10px] text-slate-400 font-semibold">{u.short}</span>
-                <span className="mt-1 truncate">{u.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Step 2: Pricing & Stock
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        <h4 className="text-base font-display font-black text-brand-navy">
-          Coût d'Achat & Gestion des Stocks
-        </h4>
-        <p className="text-xs text-slate-500">
-          Précisez le prix payé par <strong className="text-brand-navy">{unit}</strong> pour le calcul automatisé de vos recettes.
-        </p>
-      </div>
-
-      <div className="p-3.5 rounded-2xl bg-brand-pale/30 border border-brand-subtle/40 flex items-center justify-between">
-        <div>
-          <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-            Matière première
-          </span>
-          <p className="text-sm font-display font-black text-brand-navy">
-            {name || 'Matière sans nom'}
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-            Unité retenue
-          </span>
-          <p className="text-sm font-bold text-brand-primary">
-            {unit}
-          </p>
-        </div>
-      </div>
-
-      <Input
-        label={`Coût d'achat par ${unit}`}
-        type="number"
-        min="0"
-        step="any"
-        placeholder="Ex: 1500"
-        suffix="FCFA"
-        value={unitCost}
-        onChange={e => {
-          setUnitCost(e.target.value === '' ? '' : parseFloat(e.target.value));
-          if (error) setError(null);
-        }}
-        helperText={`Prix payé au fournisseur pour obtenir 1 ${unit} de cette matière.`}
-        required
-        autoFocus
-      />
-
-      <Input
-        label={`Quantité actuellement en stock (en ${unit}) - Optionnel`}
-        type="number"
-        min="0"
-        step="any"
-        placeholder="Ex: 25"
-        suffix={unit}
-        value={stockQty}
-        onChange={e => setStockQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
-        helperText="Permet d'anticiper vos réapprovisionnements et d'éviter les ruptures de fabrication."
-      />
-
-      {unitCost !== '' && Number(unitCost) > 0 && (
-        <div className="p-3 bg-white rounded-2xl border border-brand-subtle flex items-center justify-between text-xs shadow-xs">
-          <span className="text-slate-600 font-medium">Coût de référence unitaire :</span>
-          <span className="font-display font-black text-sm text-brand-navy">
-            {formatFCFA(Number(unitCost))} / {unit}
-          </span>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={materialToEdit ? 'Modifier la Matière Première' : 'Nouvelle Matière Première (Intrant)'}
-      subtitle="Assistant pour enregistrer vos coûts d'achat et suivre vos stocks d'ingrédients"
+      title={isEditing ? 'Modifier l\'ingrédient' : 'Nouvel ingrédient'}
       maxWidth="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <WizardStepper
-          steps={steps}
-          currentStepIndex={currentStepIndex}
-          onStepClick={(index) => {
-            if (index === 0 || validateStep1()) {
-              setCurrentStepIndex(index);
-            }
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <Input
+          id="material-name"
+          label="Nom de l'ingrédient"
+          placeholder="Ex : Sucre, Huile, Karité"
+          value={name}
+          onChange={e => {
+            setName(e.target.value);
+            if (nameError) setNameError(null);
           }}
-          maxAccessibleStepIndex={currentStepIndex}
+          error={nameError ?? undefined}
+          required
+          autoFocus={!isEditing}
         />
 
-        {error && (
-          <div className="p-3 rounded-2xl bg-red-50 border border-brand-alert/30 text-xs font-semibold text-brand-alert flex items-center gap-2">
+        <div className="space-y-1.5">
+          <label htmlFor="material-unit" className="block text-xs font-bold text-brand-navy tracking-wide uppercase">
+            Unité d'achat
+          </label>
+          <select id="material-unit" value={unit} onChange={e => setUnit(e.target.value)} className={selectClass}>
+            {unitOptions.map(u => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+          {unitChanged && (
+            <p className="text-xs font-medium text-amber-800 flex items-start gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>Les recettes qui utilisent cet ingrédient gardent les mêmes quantités. Vérifiez-les.</span>
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Input
+            id="material-price"
+            label={`Prix d'achat (pour 1 ${unit})`}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="any"
+            placeholder="Ex : 1500"
+            suffix="FCFA"
+            value={priceInput}
+            onChange={e => {
+              setPriceInput(e.target.value);
+              if (priceError) setPriceError(null);
+            }}
+            error={priceError ?? undefined}
+            helperText={`Le prix que vous payez pour 1 ${unit}.`}
+            required
+          />
+          {price === 0 && (
+            <p className="text-xs font-medium text-amber-800 flex items-start gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>
+                Prix à 0 FCFA : le coût de fabrication de vos produits sera faux tant que le prix n'est pas renseigné.
+              </span>
+            </p>
+          )}
+        </div>
+
+        <details id="material-stock-section" open={stockOpenByDefault} className="group rounded-2xl border border-slate-200">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-vibrant/40 [&::-webkit-details-marker]:hidden">
+            <span className="text-sm font-display font-black text-brand-navy">Suivre mon stock</span>
+            <span className="flex items-center gap-2 shrink-0 text-sm">
+              {stock !== null && !Number.isNaN(stock) ? (
+                <span className="font-bold text-brand-navy">
+                  {stock} {unit}
+                </span>
+              ) : (
+                <span className="text-xs text-slate-500">Facultatif</span>
+              )}
+              <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="px-4 pb-4 pt-1">
+            <Input
+              id="material-stock"
+              label="Quantité disponible"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              placeholder="Ex : 10"
+              suffix={unit}
+              value={stockInput}
+              onChange={e => {
+                setStockInput(e.target.value);
+                setStockTouched(true);
+                if (stockError) setStockError(null);
+              }}
+              error={stockError ?? undefined}
+              helperText={
+                isEditing
+                  ? 'Laissez vide pour garder le stock actuel. Tapez 0 si vous n\'en avez plus.'
+                  : `Combien de ${unit} vous avez aujourd'hui.`
+              }
+            />
+          </div>
+        </details>
+
+        {formError && (
+          <div
+            role="alert"
+            className="p-3 rounded-2xl bg-red-50 border border-brand-alert/30 text-xs font-semibold text-brand-alert flex items-center gap-2"
+          >
             <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+            <span>{formError}</span>
           </div>
         )}
 
-        <div className="min-h-[220px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStepIndex}
-              initial={{ opacity: 0, x: 15 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -15 }}
-              transition={{ duration: 0.2 }}
-            >
-              {currentStepIndex === 0 && renderStep1()}
-              {currentStepIndex === 1 && renderStep2()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Footer Navigation */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-          {currentStepIndex > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="md"
-              onClick={handlePrev}
-              icon={<ArrowLeft className="w-4 h-4" />}
-            >
-              Précédent
-            </Button>
-          ) : materialToEdit?.id ? (
+        {/* On mobile the primary action sits on top and delete at the very bottom. */}
+        <div className="pt-4 border-t border-slate-100 flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+          {isEditing && (
             <button
               type="button"
               onClick={handleDelete}
-              className="text-xs text-brand-alert hover:text-brand-alertDark font-bold flex items-center gap-1.5 p-2 rounded-lg hover:bg-red-50 transition-colors"
+              className="sm:mr-auto inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 min-h-[44px] text-sm font-semibold text-brand-alert hover:text-brand-alertDark hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-alert/30 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               <span>Supprimer</span>
             </button>
-          ) : (
-            <Button type="button" variant="ghost" size="md" onClick={onClose}>
-              Annuler
-            </Button>
           )}
-
-          <div className="flex items-center gap-2">
-            {currentStepIndex === 0 ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={handleNext}
-                icon={<ArrowRight className="w-4 h-4" />}
-                iconPosition="right"
-                className="shadow-sm"
-              >
-                Continuer
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                isLoading={isSubmitting}
-                icon={materialToEdit ? <Save className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                className="font-display font-black text-sm shadow-md"
-              >
-                {materialToEdit ? 'Enregistrer les modifications' : 'Créer la matière première'}
-              </Button>
-            )}
-          </div>
+          <Button type="button" variant="ghost" size="md" onClick={onClose} className={isEditing ? '' : 'sm:ml-auto'}>
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            isLoading={isSubmitting}
+            icon={isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            className="w-full sm:w-auto"
+          >
+            {isEditing ? 'Enregistrer les modifications' : 'Enregistrer l\'ingrédient'}
+          </Button>
         </div>
       </form>
     </Modal>

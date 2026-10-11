@@ -1,8 +1,9 @@
 import { runCalculationTests } from '../services/calculationService.test';
 import { runSubscriptionTests } from '../services/subscriptionService.test';
 import { isBackupReminderDue } from '../services/backupService';
+import { runSecurityAndBackupTests } from '../services/securityAndBackup.test';
 
-export function runAllTests() {
+export async function runAllTests() {
   console.log('🚀 === STARTING FEREWARI VERIFICATION SUITE ===');
 
   try {
@@ -27,10 +28,10 @@ export function runAllTests() {
     if (!isBackupReminderDue(undefined)) {
       throw new Error('Undefined last backup should be marked due');
     }
-    console.log('✅ Backup Reminder Tests Passed!');
+    console.log('✅ Backup Reminder Tests Passed!\n');
 
-    // 4. PIN Security & Setup Tests
-    console.log('🧪 Running PIN Security & Profile Setup Tests...');
+    // 4. PIN Security & Setup Tests (Basic UI validation)
+    console.log('🧪 Running PIN Security & Profile Setup Validation...');
     const validatePinSetup = (name: string, pin: string, confirm: string) => {
       if (!name.trim()) return { valid: false, error: 'Name required' };
       if (!pin || pin.length < 4) return { valid: false, error: 'PIN too short' };
@@ -42,9 +43,12 @@ export function runAllTests() {
     if (validatePinSetup('Atelier', '12', '12').valid) throw new Error('Short PIN should be invalid');
     if (validatePinSetup('Atelier', '1234', '5678').valid) throw new Error('Mismatched PIN should be invalid');
     if (!validatePinSetup('Atelier Teranga', '1234', '1234').valid) throw new Error('Valid PIN setup failed');
-    console.log('✅ PIN Security & Setup Tests Passed!');
+    console.log('✅ PIN Security & Setup Validation Passed!\n');
 
-    console.log('\n🎉 ALL 4 TEST SUITES PASSED FLAWLESSLY! (100% SUCCESS)');
+    // 5. Phase 7: Cryptographic Security & Backup Resilience Suite
+    await runSecurityAndBackupTests();
+
+    console.log('🎉 ALL 5 TEST SUITES PASSED FLAWLESSLY! (100% SUCCESS)');
   } catch (error) {
     console.error('❌ Test Failed:', error);
     process.exit(1);

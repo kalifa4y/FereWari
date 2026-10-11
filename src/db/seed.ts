@@ -1,16 +1,10 @@
 import { db, AppSettings } from './db';
 
 /**
- * Initializes app settings if first run and cleans legacy mock data if present.
- * Leaves the database completely clean for the artisan.
+ * Initializes default app settings if first run.
+ * Preserves all artisan business data intact.
  */
 export async function seedInitialData() {
-  // Check if legacy mock data exists and remove it
-  const mockMaterial = await db.rawMaterials.where('name').equals("Fleurs d'Hibiscus séchées (Bissap)").first();
-  if (mockMaterial) {
-    await clearAllUserData();
-  }
-
   // Ensure singleton app settings exist
   const existingSettings = await db.settings.get('current_user_profile');
   if (!existingSettings) {

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
+import { db, AppSettings } from '../db/db';
 import { BackupManager } from '../components/backup/BackupManager';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { clearAllUserData } from '../db/seed';
+import { isPinConfigured, verifyPin, hashPin } from '../services/pinService';
 import { formatFCFA } from '../services/calculationService';
 import { Heart, Smartphone, Copy, Check, Store, Trash2, Lock, ShieldCheck } from 'lucide-react';
 
@@ -59,9 +60,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     e.preventDefault();
     setPinMsg(null);
 
-    if (settings?.pinCode && oldPin !== settings.pinCode) {
-      setPinMsg({ text: 'L\'ancien code PIN est incorrect.', isError: true });
-      return;
+    if (isPinConfigured(settings)) {
+      const verification = await verifyPin(oldPin, settings);
+      if (!verification.valid) {
+        setPinMsg({ text: 'L\'ancien code PIN est incorrect.', isError: true });
+        return;
+      }
     }
 
     if (!newPin || newPin.length < 4) {
@@ -76,10 +80,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
     setIsSavingPin(true);
     try {
-      await db.settings.update('current_user_profile', {
-        pinCode: newPin,
-        isConfigured: true
-      });
+      const { hash, salt, iterations } = await hashPin(newPin);
+      const existing = (await db.settings.get('current_user_profile')) || settings;
+      const updatedProfile: AppSettings = {
+        ...existing,
+        id: 'current_user_profile',
+        userName: existing?.userName || 'Atelier Artisanal',
+        trialStartDate: existing?.trialStartDate || new Date(),
+        subscriptionStatus: existing?.subscriptionStatus || 'active',
+        googleDriveConnected: Boolean(existing?.googleDriveConnected),
+        pinHash: hash,
+        pinSalt: salt,
+        pinIterations: iterations,
+        isConfigured: true,
+      };
+      delete updatedProfile.pinCode;
+
+      await db.settings.put(updatedProfile);
       setPinMsg({ text: 'Code PIN modifié avec succès !', isError: false });
       setOldPin('');
       setNewPin('');
@@ -118,76 +135,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Header Banner */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-navy leading-tight">
-          Paramètres & Sauvegardes
+          Paramètres
         </h2>
         <p className="text-xs sm:text-sm text-slate-500">
-          Gérez votre profil artisan, soutenez le projet et sécurisez vos données
+          Profil de votre atelier, sécurité d'accès et sauvegardes.
         </p>
       </div>
 
-      {/* 1. Support / Donation Card */}
-      <Card variant="ocean" className="p-6 sm:p-7 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5 max-w-xl">
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase font-bold tracking-widest text-brand-cyan flex items-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 fill-brand-cyan text-brand-cyan" />
-                Soutien Volontaire au Projet
-              </span>
-            </div>
-
-            <h3 className="text-xl sm:text-2xl font-display font-black text-white leading-snug">
-              FereWari est 100% gratuit & libre d'abonnement
-            </h3>
-
-            <p className="text-xs text-brand-pale leading-relaxed">
-              L'application est mise à disposition pour aider tous les artisans. Pour soutenir notre travail et encourager l'ajout de nouvelles fonctionnalités, vous pouvez faire un don volontaire (dès {formatFCFA(5000)} ou plus).
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 shrink-0">
-            <Button
-              variant="cyan"
-              size="md"
-              icon={<Heart className="w-4 h-4 text-brand-navy" />}
-              onClick={onOpenDonation}
-            >
-              Faire un don
-            </Button>
-          </div>
-        </div>
-
-        {/* Direct Mobile Money Number Quick-Box */}
-        <div className="pt-3 border-t border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/10 p-3.5 rounded-2xl backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white/20 text-white">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-brand-pale block">
-                Dépôt Orange Money & Wave
-              </span>
-              <span className="text-lg sm:text-xl font-display font-black text-white tracking-wider">
-                73 38 67 43
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-white" />}
-              onClick={handleCopyPhone}
-              className="border-white/30 text-white hover:bg-white/20"
-            >
-              {copied ? 'Numéro copié !' : 'Copier le numéro'}
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* 2. Business Profile Card */}
+      {/* 1. Atelier Profile Card */}
       <Card variant="default" className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-brand-pale text-brand-primary">
@@ -195,10 +150,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-display font-black text-brand-navy leading-tight">
-              Profil de l'Atelier / Unité de Production
+              Atelier
             </h3>
             <p className="text-xs text-slate-500">
-              Identifiant qui apparaît sur vos reçus et exports
+              Nom affiché sur vos reçus et documents
             </p>
           </div>
         </div>
@@ -229,7 +184,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </form>
       </Card>
 
-      {/* 3. Security & PIN Code Management Card */}
+      {/* 2. Security & PIN Code Management Card */}
       <Card variant="default" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -238,10 +193,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-display font-black text-brand-navy leading-tight">
-                Sécurité & Code PIN d'Accès
+                Sécurité & Code PIN
               </h3>
               <p className="text-xs text-slate-500">
-                Protège vos recettes et marges contre les regards indiscrets
+                Protégez l'accès à vos données
               </p>
             </div>
           </div>
@@ -253,7 +208,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               icon={<Lock className="w-3.5 h-3.5 text-brand-primary" />}
               onClick={onLockApp}
             >
-              Verrouiller maintenant
+              Verrouiller l'application
             </Button>
           )}
         </div>
@@ -270,7 +225,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         <form onSubmit={handleSavePin} className="space-y-3 pt-1">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {settings?.pinCode ? (
+            {isPinConfigured(settings) ? (
               <Input
                 label="Ancien Code PIN"
                 type="password"
@@ -320,28 +275,89 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </form>
       </Card>
 
-      {/* 4. Backup Manager (JSON & Google Drive) */}
+      {/* 3. Backup Manager (JSON & Google Drive) */}
       <BackupManager settings={settings} />
 
-      {/* 5. Clear / Reset Data Card */}
-      <Card variant="default" className="p-5 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      {/* 4. Voluntary Support Card */}
+      <Card variant="default" className="p-5 sm:p-6 space-y-4 border border-brand-subtle/60 bg-gradient-to-br from-brand-pale/40 to-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase font-bold tracking-widest text-brand-primary flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                Soutien volontaire au projet
+              </span>
+            </div>
+
+            <h3 className="text-base sm:text-lg font-display font-black text-brand-navy leading-snug">
+              FereWari est gratuit et libre d'abonnement
+            </h3>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Pour encourager le développement et les améliorations continues de l'application, vous pouvez faire un don volontaire (dès {formatFCFA(5000)} ou selon vos moyens).
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" />}
+              onClick={onOpenDonation}
+              className="border-rose-200 text-slate-700 hover:bg-rose-50"
+            >
+              Faire un don
+            </Button>
+          </div>
+        </div>
+
+        {/* Direct Mobile Money Number Quick-Box */}
+        <div className="pt-3 border-t border-slate-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-brand-pale text-brand-primary">
+              <Smartphone className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                Orange Money & Wave
+              </span>
+              <span className="text-base sm:text-lg font-display font-black text-brand-navy tracking-wider">
+                73 38 67 43
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            icon={copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+            onClick={handleCopyPhone}
+            className="text-xs text-slate-600"
+          >
+            {copied ? 'Numéro copié !' : 'Copier le numéro'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* 5. Clear / Reset Data Card (Danger Zone) */}
+      <Card variant="default" className="p-5 border border-rose-200 bg-rose-50/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="space-y-0.5">
-          <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-            <Trash2 className="w-4 h-4 text-slate-500" />
+          <h4 className="text-sm font-bold text-rose-900 flex items-center gap-1.5">
+            <Trash2 className="w-4 h-4 text-rose-600" />
             Remise à zéro des données locales
           </h4>
-          <p className="text-xs text-slate-500">
-            Efface toutes les matières premières, recettes, ventes et clients de votre appareil pour repartir d'une feuille blanche.
+          <p className="text-xs text-slate-600">
+            Efface toutes les données (ingrédients, produits, ventes et clients) de cet appareil.
           </p>
         </div>
 
         <Button
           variant="outline"
           size="sm"
-          icon={<Trash2 className="w-4 h-4 text-rose-500" />}
+          icon={<Trash2 className="w-4 h-4 text-rose-600" />}
           isLoading={isClearing}
           onClick={handleClearAllData}
-          className="border-rose-200 text-rose-600 hover:bg-rose-50"
+          className="border-rose-300 text-rose-700 hover:bg-rose-100 shrink-0"
         >
           Effacer toutes les données
         </Button>

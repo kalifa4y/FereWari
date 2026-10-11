@@ -44,10 +44,10 @@ export const RecipesPage: React.FC<RecipesPageProps> = ({ onQuickSell }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-navy leading-tight">
-            Fiches Recettes & Produits Finis (BOM)
+            Produits
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Composition de vos produits, calcul automatique du Coût de Revient Unitaire (CRU) et des marges
+            Consultez vos coûts de fabrication et lancez vos ventes.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export const RecipesPage: React.FC<RecipesPageProps> = ({ onQuickSell }) => {
           onClick={handleOpenCreate}
           className="shadow-sm"
         >
-          Nouvelle Fiche Recette
+          Ajouter un produit
         </Button>
       </div>
 
@@ -69,25 +69,43 @@ export const RecipesPage: React.FC<RecipesPageProps> = ({ onQuickSell }) => {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Rechercher une recette / produit..."
+          placeholder="Rechercher un produit..."
           className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 bg-white focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20 font-medium"
         />
       </div>
 
-      {/* Products Grid */}
-      {filteredProducts.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-brand-cyan/20 text-brand-primary flex items-center justify-center mx-auto">
-            <FlaskConical className="w-7 h-7" />
+      {/* Products Grid & Empty States */}
+      {products.length === 0 ? (
+        <div className="p-10 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-brand-cyan/20 text-brand-primary flex items-center justify-center mx-auto">
+            <FlaskConical className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-display font-black text-brand-navy">
-            Aucune fiche recette créée
+          <h3 className="text-base font-display font-black text-brand-navy">
+            Aucun produit enregistré
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Créez votre première recette en associant vos matières premières pour découvrir votre véritable marge de rentabilité.
+          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+            Créez vos produits pour calculer leur coût de fabrication et suivre vos gains.
           </p>
-          <Button variant="primary" size="md" onClick={handleOpenCreate}>
-            Créer une fiche recette
+          <div className="pt-2">
+            <Button variant="primary" size="md" onClick={handleOpenCreate}>
+              Ajouter un produit
+            </Button>
+          </div>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <h3 className="text-sm font-display font-black text-brand-navy">
+            Aucun produit ne correspond à la recherche
+          </h3>
+          <p className="text-xs text-slate-500">
+            Vérifiez l’orthographe ou effacez la recherche.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSearch('')}
+          >
+            Effacer la recherche
           </Button>
         </div>
       ) : (

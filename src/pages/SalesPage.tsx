@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Sale, Product } from '../db/db';
 import { Button } from '../components/common/Button';
 import { formatFCFA } from '../services/calculationService';
-import { Zap, Search, Calendar, User, Phone, ShoppingBag, FileText } from 'lucide-react';
+import { Zap, Search, Calendar, User, Phone, ShoppingBag, FileText, ArrowRight } from 'lucide-react';
 
 interface SalesPageProps {
   onOpenSaleModal: () => void;
@@ -47,10 +48,10 @@ export const SalesPage: React.FC<SalesPageProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-display font-black text-brand-navy leading-tight">
-            Ventes & Encaissements
+            Historique des ventes
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Historique complet des ventes express et émission de reçus clients
+            Consultez vos ventes passées et imprimez ou partagez vos reçus.
           </p>
         </div>
 
@@ -61,7 +62,7 @@ export const SalesPage: React.FC<SalesPageProps> = ({
           onClick={onOpenSaleModal}
           className="shadow-md"
         >
-          ⚡ Nouvelle Vente Express
+          Nouvelle vente
         </Button>
       </div>
 
@@ -73,33 +74,65 @@ export const SalesPage: React.FC<SalesPageProps> = ({
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher par client, produit, tel..."
+            placeholder="Rechercher une vente (produit, client, tél)..."
             className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 bg-white focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20 font-medium"
           />
         </div>
 
         <div className="p-2.5 px-4 rounded-xl bg-brand-pale/50 border border-brand-subtle text-xs flex items-center gap-2 self-end sm:self-auto">
-          <span className="text-slate-600 font-medium">{filteredSales.length} transaction(s) :</span>
+          <span className="text-slate-600 font-medium">{filteredSales.length} vente(s) :</span>
           <span className="font-display font-black text-base text-brand-navy">
             {formatFCFA(totalSalesAmount)}
           </span>
         </div>
       </div>
 
-      {/* Sales Transactions Table */}
-      {filteredSales.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-brand-pale text-brand-primary flex items-center justify-center mx-auto">
-            <ShoppingBag className="w-7 h-7" />
+      {/* Sales Transactions & Empty States */}
+      {sales.length === 0 ? (
+        <div className="p-10 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-brand-pale text-brand-primary flex items-center justify-center mx-auto">
+            <ShoppingBag className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-display font-black text-brand-navy">
+          <h3 className="text-base font-display font-black text-brand-navy">
             Aucune vente enregistrée
           </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Enregistrez votre première vente express en 2 clics pour suivre vos encaissements.
+          {products.length > 0 ? (
+            <>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+                Enregistrez votre première vente en quelques clics pour suivre vos encaissements.
+              </p>
+              <div className="pt-2">
+                <Button variant="vibrant" size="md" onClick={onOpenSaleModal}>
+                  Enregistrer une vente
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+                Vous devez d’abord créer au moins un produit pour pouvoir enregistrer des ventes.
+              </p>
+              <div className="pt-2">
+                <Link
+                  to="/recipes"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-primary text-white text-xs font-bold shadow-sm hover:bg-brand-navy transition-colors"
+                >
+                  Ajouter un produit d'abord <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      ) : filteredSales.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <h3 className="text-sm font-display font-black text-brand-navy">
+            Aucune vente ne correspond à votre recherche
+          </h3>
+          <p className="text-xs text-slate-500">
+            Vérifiez le nom du client, du produit ou le numéro de téléphone.
           </p>
-          <Button variant="vibrant" size="md" onClick={onOpenSaleModal}>
-            Enregistrer une vente
+          <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+            Effacer la recherche
           </Button>
         </div>
       ) : (
@@ -111,8 +144,16 @@ export const SalesPage: React.FC<SalesPageProps> = ({
             return (
               <div
                 key={sale.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => onOpenReceipt(sale, product)}
-                className="p-4 hover:bg-brand-pale/20 transition-colors flex items-center justify-between gap-3 cursor-pointer group"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onOpenReceipt(sale, product);
+                  }
+                }}
+                className="p-4 hover:bg-brand-pale/20 transition-colors flex items-center justify-between gap-3 cursor-pointer group focus:outline-none focus:bg-brand-pale/30"
               >
                 {/* Left: Product & Customer */}
                 <div className="min-w-0 space-y-1">
@@ -128,7 +169,7 @@ export const SalesPage: React.FC<SalesPageProps> = ({
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                     <span className="flex items-center gap-1 font-semibold text-slate-700">
                       <User className="w-3.5 h-3.5 text-slate-400" />
-                      {sale.customerName || 'Client de Passage'}
+                      {sale.customerName || 'Client de passage'}
                     </span>
 
                     {sale.customerPhone && (
@@ -153,7 +194,7 @@ export const SalesPage: React.FC<SalesPageProps> = ({
                     </span>
                     <span className="text-[11px] font-semibold text-brand-vibrant group-hover:underline flex items-center justify-end gap-1">
                       <FileText className="w-3.5 h-3.5" />
-                      Reçu
+                      Voir le reçu
                     </span>
                   </div>
                 </div>

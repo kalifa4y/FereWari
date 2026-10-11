@@ -76,7 +76,7 @@ export const CustomerRankingTable: React.FC<CustomerRankingTableProps> = ({
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un client (nom, tel)..."
+            placeholder="Rechercher un client (nom, tél)..."
             className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20 font-medium"
           />
         </div>
@@ -84,6 +84,7 @@ export const CustomerRankingTable: React.FC<CustomerRankingTableProps> = ({
         {/* Sort Filter Buttons */}
         <div className="flex items-center gap-1.5 self-end sm:self-auto bg-slate-100 p-1 rounded-xl">
           <button
+            type="button"
             onClick={() => setSortBy('totalSpent')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
               sortBy === 'totalSpent'
@@ -91,9 +92,10 @@ export const CustomerRankingTable: React.FC<CustomerRankingTableProps> = ({
                 : 'text-slate-600 hover:text-brand-navy'
             }`}
           >
-            Par Chiffre d'Affaires
+            Par montant
           </button>
           <button
+            type="button"
             onClick={() => setSortBy('ordersCount')}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
               sortBy === 'ordersCount'
@@ -101,23 +103,52 @@ export const CustomerRankingTable: React.FC<CustomerRankingTableProps> = ({
                 : 'text-slate-600 hover:text-brand-navy'
             }`}
           >
-            Par Nb Commandes
+            Par commandes
           </button>
         </div>
       </div>
 
-      {/* Leaderboard Table / Cards */}
-      {sortedCustomers.length === 0 ? (
-        <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-500">
-          Aucun client trouvé pour cette recherche.
+      {/* Leaderboard Table / Cards & Empty States */}
+      {customers.length === 0 ? (
+        <div className="p-10 rounded-2xl bg-white border border-slate-200 text-center space-y-2 shadow-xs">
+          <h3 className="text-base font-display font-black text-brand-navy">
+            Aucun client enregistré
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+            Les clients sont enregistrés automatiquement lorsque vous renseignez leur nom lors d'une vente.
+          </p>
+        </div>
+      ) : sortedCustomers.length === 0 ? (
+        <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-3 shadow-xs">
+          <h3 className="text-sm font-display font-black text-brand-navy">
+            Aucun client ne correspond à votre recherche
+          </h3>
+          <p className="text-xs text-slate-500">
+            Vérifiez le nom ou le numéro de téléphone saisi.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Effacer la recherche
+          </button>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden divide-y divide-slate-100">
           {sortedCustomers.map((cust, idx) => (
             <div
               key={cust.id || idx}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectCustomer && onSelectCustomer(cust)}
-              className="p-3.5 sm:p-4 hover:bg-brand-pale/30 transition-colors flex items-center justify-between gap-3 cursor-pointer group"
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && onSelectCustomer) {
+                  e.preventDefault();
+                  onSelectCustomer(cust);
+                }
+              }}
+              className="p-3.5 sm:p-4 hover:bg-brand-pale/30 transition-colors flex items-center justify-between gap-3 cursor-pointer group focus:outline-none focus:bg-brand-pale/40"
             >
               {/* Left: Rank & Name */}
               <div className="flex items-center gap-3 min-w-0">

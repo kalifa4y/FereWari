@@ -55,14 +55,14 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={customer.name}
-      subtitle="Historique des commandes et fidélité client"
+      subtitle="Fiche client et historique des achats"
       maxWidth="md"
     >
       <div className="space-y-4">
         {/* Customer KPI Header Card */}
         <div className="p-4 rounded-2xl bg-ocean-gradient text-white flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs text-brand-subtle font-semibold">Chiffre d'affaires cumulé</span>
+            <span className="text-xs text-brand-subtle font-semibold">Total des achats</span>
             <p className="text-2xl font-display font-black text-white">
               {formatFCFA(customer.totalSpent)}
             </p>
@@ -80,6 +80,7 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             </div>
             {customer.phone && (
               <button
+                type="button"
                 onClick={handleWhatsApp}
                 className="text-xs px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold flex items-center gap-1 transition-colors"
               >
@@ -93,7 +94,7 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         {/* Purchase History */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold text-brand-navy uppercase tracking-wider">
-            Historique des Achats
+            Commandes passées
           </h4>
 
           {loading ? (

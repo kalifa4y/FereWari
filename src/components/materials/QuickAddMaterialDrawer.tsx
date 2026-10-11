@@ -2,18 +2,8 @@ import React, { useState } from 'react';
 import { db, RawMaterial } from '../../db/db';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
-import { formatFCFA } from '../../services/calculationService';
-import { Plus, X, Sparkles } from 'lucide-react';
-
-const COMMON_UNITS = [
-  { label: 'Kilogramme (kg)', value: 'kg' },
-  { label: 'Gramme (g)', value: 'g' },
-  { label: 'Litre (L)', value: 'L' },
-  { label: 'Millilitre (ml)', value: 'ml' },
-  { label: 'Unité (pièce)', value: 'unité' },
-  { label: 'Sac', value: 'sac' },
-  { label: 'Paquet / Carton', value: 'paquet' },
-];
+import { MATERIAL_UNITS, parseAmount } from './RawMaterialFormModal';
+import { Plus, X, ChevronDown, AlertTriangle } from 'lucide-react';
 
 interface QuickAddMaterialDrawerProps {
   isOpen: boolean;
@@ -28,73 +18,94 @@ export const QuickAddMaterialDrawer: React.FC<QuickAddMaterialDrawerProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('kg');
-  const [unitCost, setUnitCost] = useState<number | ''>('');
-  const [stockQty, setStockQty] = useState<number | ''>('');
+  const [priceInput, setPriceInput] = useState('');
+  const [stockInput, setStockInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const price = parseAmount(priceInput);
+  const stock = parseAmount(stockInput);
+
+  const reset = () => {
+    setName('');
+    setUnit('kg');
+    setPriceInput('');
+    setStockInput('');
+    setError(null);
+  };
+
+  const handleCancel = () => {
+    reset();
+    onClose();
+  };
+
+  const handleCreate = async () => {
+    if (isSubmitting) return;
     if (!name.trim()) {
-      setError('Veuillez renseigner le nom de la matière.');
+      setError('Indiquez le nom de l\'ingrédient.');
+      document.getElementById('quick-material-name')?.focus();
       return;
     }
-    if (unitCost === '' || Number(unitCost) < 0) {
-      setError('Veuillez indiquer un coût d\'achat valide (>= 0 FCFA).');
+    if (price === null || Number.isNaN(price)) {
+      setError(price === null ? 'Indiquez le prix d\'achat.' : 'Indiquez un prix valide (0 ou plus).');
+      document.getElementById('quick-material-price')?.focus();
+      return;
+    }
+    if (stock !== null && Number.isNaN(stock)) {
+      setError('Indiquez une quantité de stock valide (0 ou plus).');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const now = new Date();
       const payload: Omit<RawMaterial, 'id'> = {
         name: name.trim(),
         unit: unit.trim(),
-        unitCost: Number(unitCost),
-        stockQty: Number(stockQty) || 0,
-        updatedAt: now,
+        unitCost: price,
+        stockQty: stock ?? 0,
+        updatedAt: new Date(),
       };
 
       const newId = await db.rawMaterials.add(payload as RawMaterial);
       const created: RawMaterial = { ...payload, id: Number(newId) };
 
-      setName('');
-      setUnit('kg');
-      setUnitCost('');
-      setStockQty('');
-      setError(null);
-
+      reset();
       onCreated(created);
       onClose();
     } catch (err) {
       console.error('Error adding quick raw material:', err);
-      setError('Erreur lors de la création de la matière première.');
+      setError('L\'enregistrement a échoué. Réessayez.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // This panel is rendered inside the product form: Enter must create the
+  // ingredient instead of submitting the whole product.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+      e.preventDefault();
+      void handleCreate();
+    }
+  };
+
   return (
-    <div className="p-4 rounded-2xl bg-gradient-to-br from-brand-pale/60 to-white border-2 border-brand-vibrant/30 space-y-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+    <div
+      role="group"
+      aria-labelledby="quick-material-title"
+      onKeyDown={handleKeyDown}
+      className="p-4 rounded-2xl bg-brand-pale/30 border-2 border-brand-vibrant/30 space-y-3"
+    >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-brand-vibrant text-white flex items-center justify-center shadow-sm">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-black text-brand-navy uppercase tracking-wider">
-              Créer une nouvelle matière première
-            </h4>
-            <p className="text-[11px] text-slate-500">
-              L'intrant sera automatiquement enregistré et ajouté à votre recette
-            </p>
-          </div>
-        </div>
+        <h5 id="quick-material-title" className="text-sm font-display font-black text-brand-navy">
+          Nouvel ingrédient
+        </h5>
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleCancel}
+          aria-label="Fermer"
           className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
         >
           <X className="w-4 h-4" />
@@ -102,7 +113,7 @@ export const QuickAddMaterialDrawer: React.FC<QuickAddMaterialDrawerProps> = ({
       </div>
 
       {error && (
-        <div className="p-2.5 rounded-xl bg-red-50 border border-brand-alert/30 text-xs font-semibold text-brand-alert">
+        <div role="alert" className="p-2.5 rounded-xl bg-red-50 border border-brand-alert/30 text-xs font-semibold text-brand-alert">
           {error}
         </div>
       )}
@@ -110,24 +121,26 @@ export const QuickAddMaterialDrawer: React.FC<QuickAddMaterialDrawerProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="sm:col-span-2">
           <Input
-            label="Nom de la matière"
-            placeholder="Ex: Feuilles de Bissap, Sucre roux, Huile d'Argan..."
+            id="quick-material-name"
+            label="Nom de l'ingrédient"
+            placeholder="Ex : Sucre, Huile, Karité"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={e => setName(e.target.value)}
             required
           />
         </div>
 
         <div className="space-y-1.5 text-left">
-          <label className="block text-xs font-bold text-brand-navy tracking-wide uppercase">
+          <label htmlFor="quick-material-unit" className="block text-xs font-bold text-brand-navy tracking-wide uppercase">
             Unité d'achat
           </label>
           <select
+            id="quick-material-unit"
             value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-800 focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20"
+            onChange={e => setUnit(e.target.value)}
+            className="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm focus:border-brand-vibrant focus:outline-none focus:ring-2 focus:ring-brand-vibrant/20"
           >
-            {COMMON_UNITS.map((u) => (
+            {MATERIAL_UNITS.map(u => (
               <option key={u.value} value={u.value}>
                 {u.label}
               </option>
@@ -136,53 +149,64 @@ export const QuickAddMaterialDrawer: React.FC<QuickAddMaterialDrawerProps> = ({
         </div>
 
         <Input
-          label={`Coût d'achat par ${unit}`}
+          id="quick-material-price"
+          label={`Prix d'achat (pour 1 ${unit})`}
           type="number"
+          inputMode="decimal"
           min="0"
           step="any"
-          placeholder="Ex: 1500"
+          placeholder="Ex : 1500"
           suffix="FCFA"
-          value={unitCost}
-          onChange={(e) => setUnitCost(e.target.value === '' ? '' : parseFloat(e.target.value))}
+          value={priceInput}
+          onChange={e => setPriceInput(e.target.value)}
           required
         />
-
-        <div className="sm:col-span-2">
-          <Input
-            label={`Stock initial disponible (en ${unit}) - Optionnel`}
-            type="number"
-            min="0"
-            step="any"
-            placeholder="Ex: 10"
-            suffix={unit}
-            value={stockQty}
-            onChange={(e) => setStockQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
-          />
-        </div>
       </div>
 
-      {unitCost !== '' && Number(unitCost) > 0 && (
-        <div className="p-2.5 rounded-xl bg-white border border-brand-subtle/50 flex items-center justify-between text-xs">
-          <span className="text-slate-500 font-medium">Prix unitaire configuré :</span>
-          <span className="font-bold text-brand-navy">
-            {formatFCFA(Number(unitCost))} / {unit}
-          </span>
-        </div>
+      {price === 0 && (
+        <p className="text-xs font-medium text-amber-800 flex items-start gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>Prix à 0 FCFA : le coût de fabrication sera faux tant que le prix n'est pas renseigné.</span>
+        </p>
       )}
 
+      <details className="group rounded-xl border border-slate-200 bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-brand-navy focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-vibrant/40 [&::-webkit-details-marker]:hidden">
+          <span>Suivre mon stock</span>
+          <span className="flex items-center gap-2 text-xs font-normal text-slate-500">
+            Facultatif
+            <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+        <div className="px-3 pb-3 pt-1">
+          <Input
+            id="quick-material-stock"
+            label="Quantité disponible"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="any"
+            placeholder="Ex : 10"
+            suffix={unit}
+            value={stockInput}
+            onChange={e => setStockInput(e.target.value)}
+          />
+        </div>
+      </details>
+
       <div className="flex items-center justify-end gap-2 pt-1">
-        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+        <Button type="button" variant="ghost" size="md" onClick={handleCancel}>
           Annuler
         </Button>
         <Button
           type="button"
           variant="primary"
-          size="sm"
+          size="md"
           isLoading={isSubmitting}
-          icon={<Plus className="w-3.5 h-3.5" />}
-          onClick={handleSubmit}
+          icon={<Plus className="w-4 h-4" />}
+          onClick={handleCreate}
         >
-          Créer et insérer dans la recette
+          Ajouter à la recette
         </Button>
       </div>
     </div>

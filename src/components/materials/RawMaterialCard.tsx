@@ -11,7 +11,7 @@ interface RawMaterialCardProps {
 }
 
 export const RawMaterialCard: React.FC<RawMaterialCardProps> = ({ material, onEdit }) => {
-  const isLowStock = material.stockQty <= 5;
+  const isLowStock = material.stockQty > 0 && material.stockQty <= 5;
 
   return (
     <Card
@@ -22,12 +22,12 @@ export const RawMaterialCard: React.FC<RawMaterialCardProps> = ({ material, onEd
     >
       <div>
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-brand-pale text-brand-primary flex items-center justify-center shrink-0">
               <Layers className="w-5 h-5" />
             </div>
-            <div>
-              <h4 className="font-display font-black text-lg text-brand-navy leading-tight group-hover:text-brand-vibrant transition-colors">
+            <div className="min-w-0">
+              <h4 className="font-display font-black text-base sm:text-lg text-brand-navy leading-tight group-hover:text-brand-vibrant transition-colors truncate">
                 {material.name}
               </h4>
               <p className="text-xs text-slate-500 font-medium">
@@ -37,12 +37,14 @@ export const RawMaterialCard: React.FC<RawMaterialCardProps> = ({ material, onEd
           </div>
 
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(material);
             }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-colors"
-            title="Modifier"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-brand-navy hover:bg-slate-100 transition-colors shrink-0"
+            title="Modifier l'ingrédient"
+            aria-label={`Modifier ${material.name}`}
           >
             <Edit3 className="w-4 h-4" />
           </button>
@@ -51,7 +53,7 @@ export const RawMaterialCard: React.FC<RawMaterialCardProps> = ({ material, onEd
         {/* Pricing & Stock values */}
         <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
           <div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 block">Coût d'achat</span>
+            <span className="text-[10px] font-bold uppercase text-slate-400 block">Prix d'achat</span>
             <span className="text-base font-display font-black text-brand-primary">
               {formatFCFA(material.unitCost)}
             </span>

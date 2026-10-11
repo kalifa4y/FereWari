@@ -16,10 +16,10 @@ export const CostBreakdownChart: React.FC<CostBreakdownChartProps> = ({ breakdow
     dominantCostItem
   } = breakdown;
 
-  if (totalUnitCost === 0) {
+  if (totalUnitCost === 0 || !breakdown.isComplete) {
     return (
       <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
-        Ajoutez des matières premières ou des frais pour visualiser la décomposition du coût de revient.
+        Ajoutez des ingrédients valides pour visualiser la décomposition du coût de fabrication.
       </div>
     );
   }

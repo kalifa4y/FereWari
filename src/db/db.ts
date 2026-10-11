@@ -12,6 +12,8 @@ export interface RawMaterial {
 export interface RecipeItem {
   rawMaterialId: number;
   quantity: number;
+  /** Unité facultative de la quantité utilisée dans la recette (ex: 'g', 'kg', 'ml', 'L'). Rétrocompatible : si absente, interprétée dans l'unité d'achat de la matière. */
+  unit?: string;
 }
 
 export interface Product {
@@ -50,6 +52,9 @@ export interface AppSettings {
   id?: string; // 'current_user_profile'
   userName: string;
   pinCode?: string;
+  pinHash?: string;
+  pinSalt?: string;
+  pinIterations?: number;
   isConfigured?: boolean;
   trialStartDate: Date;
   subscriptionStatus: 'trial' | 'grace_period' | 'active' | 'expired';
